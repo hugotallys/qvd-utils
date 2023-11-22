@@ -2,8 +2,7 @@ use bitvec::prelude::*;
 use pyo3::{prelude::*, types::PyDict};
 use quick_xml::de::from_str;
 use qvd_structure::{QvdFieldHeader, QvdTableHeader};
-use std::io::SeekFrom;
-use std::io::{self, Read};
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::str;
 use std::{collections::HashMap, fs::File};
@@ -13,6 +12,7 @@ pub mod qvd_structure;
 #[pyclass]
 struct QvdReader {
     file_name: String,
+    file: Option<File>,
     binary_section_offset: usize,
     qvd_structure: QvdTableHeader,
     symbol_map: HashMap<String, Vec<Option<String>>>,
@@ -29,6 +29,7 @@ impl QvdReader {
 
         QvdReader {
             file_name,
+            file: None,
             binary_section_offset,
             qvd_structure,
             symbol_map,
@@ -37,27 +38,43 @@ impl QvdReader {
 
     fn fetch_rows(&mut self, py: Python, num_rows: usize) -> PyResult<Py<PyDict>> {
         let dict = PyDict::new(py);
-
-        if let Ok(f) = File::open(&self.file_name) {
-            // Seek to the end of the XML section
-            let buf = read_qvd_to_buf(f, self.binary_section_offset);
+    
+        if self.file.is_none() {
+            self.file = File::open(&self.file_name).ok();
+        }
+    
+        if let Some(ref mut f) = self.file {
+            // Seek to the end of the XML section if it's the first call
+            if f.seek(SeekFrom::Current(0)).ok() == Some(0) {
+                f.seek(SeekFrom::Start(self.binary_section_offset as u64)).ok();
+            }
+    
+            let buf = read_qvd_to_buf(f.try_clone().unwrap(), self.binary_section_offset);
             let rows_start = self.qvd_structure.offset;
             let rows_end = buf.len();
             let rows_section = &buf[rows_start..rows_end];
             let record_byte_size = self.qvd_structure.record_byte_size;
-
+    
             for field in &mut self.qvd_structure.fields.headers {
                 self.symbol_map.insert(
                     field.field_name.clone(),
-                    get_symbols_as_strings(&buf, &field),
+                    get_symbols_as_strings(&buf, field),
                 );
-                let symbol_indexes = get_row_indexes(&rows_section, &field, record_byte_size, num_rows);
+                let symbol_indexes = get_row_indexes(rows_section, field, record_byte_size, num_rows);
                 let column_values =
                     match_symbols_with_indexes(&self.symbol_map[&field.field_name], &symbol_indexes);
                 dict.set_item(field.field_name.clone(), column_values).unwrap();
             }
+    
+            // Update rows_start for the next call
+            self.qvd_structure.offset += num_rows * record_byte_size;
         }
+    
         Ok(dict.into())
+    }
+
+    fn get_number_of_records(&self) -> PyResult<usize> {
+        Ok(self.qvd_structure.no_of_records as usize)
     }
 }
 
