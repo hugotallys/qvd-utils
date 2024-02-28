@@ -2,26 +2,37 @@
 [![CI pipeline](https://github.com/SBentley/qvd-utils/actions/workflows/CI.yml/badge.svg)](https://github.com/SBentley/qvd-utils/actions/workflows/CI.yml)
 
 A python library for reading Qlik Sense .qvd file format, written in Rust.
-Files can be read to DataFrame or dictionary.
+Files can be read to DataFrame or dictionary. Large files can be read in parts.
 
 ## Install
 
-Install from PyPi https://pypi.org/project/qvd/
+Install from PyPi:
 
 ```sh
-pip install qvd
+pip install qvd_utils
 ```
 
 ## Usage
 
 ```python
-from qvd import qvd_reader
+from qvd_utils import qvd_reader
 
 df = qvd_reader.read('test.qvd')
 print(df)
 ```
 
-![example](https://raw.githubusercontent.com/SBentley/qvd-utils/master/example.png)
+For large files specify a `chunk_size` parameter get a generator of dicts:
+
+```python
+import pandas as pd
+from qvd_utils import qvd_reader
+
+chunks = qvd_reader.read_in_chunks('test.qvd', chunk_size=1000)
+
+for chunk in chunks:
+    df = pd.DataFrame.from_dict(chunk)
+    print(df)
+```
 
 ### Developing
 
