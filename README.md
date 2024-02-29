@@ -9,7 +9,7 @@ Files can be read to DataFrame or dictionary. Large files can be read in parts.
 Install from PyPi:
 
 ```sh
-pip install qvd_utils
+pip install qvd-utils
 ```
 
 ## Usage
