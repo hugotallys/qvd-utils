@@ -1,5 +1,6 @@
 import pandas as pd
-from .qvd import QvdReader
+
+from .qvd_utils import QvdReader
 
 
 def read(file_name):

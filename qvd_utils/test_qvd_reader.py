@@ -1,8 +1,8 @@
-from qvd_utils import qvd_reader
 import os
 import pandas as pd
 import numpy as np
 
+from qvd_utils import qvd_reader
 
 class TestQvdReader():
     def test_read_shape(self):

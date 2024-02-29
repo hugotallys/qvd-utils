@@ -38,38 +38,43 @@ impl QvdReader {
 
     fn fetch_rows(&mut self, py: Python, num_rows: usize) -> PyResult<Py<PyDict>> {
         let dict = PyDict::new(py);
-    
+
         if self.file.is_none() {
             self.file = File::open(&self.file_name).ok();
         }
-    
+
         if let Some(ref mut f) = self.file {
             // Seek to the end of the XML section if it's the first call
             if f.seek(SeekFrom::Current(0)).ok() == Some(0) {
-                f.seek(SeekFrom::Start(self.binary_section_offset as u64)).ok();
+                f.seek(SeekFrom::Start(self.binary_section_offset as u64))
+                    .ok();
             }
-    
+
             let buf = read_qvd_to_buf(f.try_clone().unwrap(), self.binary_section_offset);
             let rows_start = self.qvd_structure.offset;
             let rows_end = buf.len();
             let rows_section = &buf[rows_start..rows_end];
             let record_byte_size = self.qvd_structure.record_byte_size;
-    
+
             for field in &mut self.qvd_structure.fields.headers {
                 self.symbol_map.insert(
                     field.field_name.clone(),
                     get_symbols_as_strings(&buf, field),
                 );
-                let symbol_indexes = get_row_indexes(rows_section, field, record_byte_size, num_rows);
-                let column_values =
-                    match_symbols_with_indexes(&self.symbol_map[&field.field_name], &symbol_indexes);
-                dict.set_item(field.field_name.clone(), column_values).unwrap();
+                let symbol_indexes =
+                    get_row_indexes(rows_section, field, record_byte_size, num_rows);
+                let column_values = match_symbols_with_indexes(
+                    &self.symbol_map[&field.field_name],
+                    &symbol_indexes,
+                );
+                dict.set_item(field.field_name.clone(), column_values)
+                    .unwrap();
             }
-    
+
             // Update rows_start for the next call
             self.qvd_structure.offset += num_rows * record_byte_size;
         }
-    
+
         Ok(dict.into())
     }
 
@@ -79,7 +84,7 @@ impl QvdReader {
 }
 
 #[pymodule]
-fn qvd(_py: Python, m: &PyModule) -> PyResult<()> {
+fn qvd_utils(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<QvdReader>()?;
     Ok(())
 }
@@ -172,7 +177,12 @@ fn get_symbols_as_strings(buf: &[u8], field: &QvdFieldHeader) -> Vec<Option<Stri
 }
 
 // Retrieve bit stuffed data. Each row has index to value from symbol map.
-fn get_row_indexes(buf: &[u8], field: &QvdFieldHeader, record_byte_size: usize, num_rows: usize) -> Vec<i64> {
+fn get_row_indexes(
+    buf: &[u8],
+    field: &QvdFieldHeader,
+    record_byte_size: usize,
+    num_rows: usize,
+) -> Vec<i64> {
     let mut cloned_buf = buf.to_owned();
     let chunks = cloned_buf.chunks_mut(record_byte_size);
     let mut indexes: Vec<i64> = Vec::new();
