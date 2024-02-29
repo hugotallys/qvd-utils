@@ -186,9 +186,13 @@ fn get_row_indexes(
     let mut cloned_buf = buf.to_owned();
     let chunks = cloned_buf.chunks_mut(record_byte_size);
     let mut indexes: Vec<i64> = Vec::new();
-    let mut count = 0;
-    for chunk in chunks {
-        if count == num_rows {
+    let num_rows = if num_rows == 0 {
+        chunks.len()
+    } else {
+        num_rows
+    };
+    for (i, chunk) in chunks.enumerate() {
+        if i == num_rows {
             break;
         }
         // Reverse the bytes in the record
@@ -199,7 +203,6 @@ fn get_row_indexes(
         let binary = bitslice_to_vec(&bits[end..start]);
         let index = binary_to_u32(binary);
         indexes.push((index as i32 + field.bias) as i64);
-        count += 1;
     }
     indexes
 }
@@ -419,7 +422,7 @@ mod tests {
             bias: 0,
         };
         let record_byte_size = buf.len();
-        let res = get_row_indexes(&buf, &field, record_byte_size);
+        let res = get_row_indexes(&buf, &field, record_byte_size, 0);
         let expected: Vec<i64> = vec![5];
         assert_eq!(expected, res);
     }
