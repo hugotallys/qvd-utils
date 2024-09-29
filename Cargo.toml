@@ -9,11 +9,9 @@ license = "Apache-2.0"
 repository = "https://github.com/hugotallys/qvd-utils"
 keywords = ["python", "rust", "qlik", "sense", "qvd"]
 
-
 [lib]
 name = "qvd_utils"
 crate-type = ["cdylib"]
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 serde = { version = "1.0.117", features = ["derive"] }
@@ -22,3 +20,4 @@ bitvec = "0.19.4"
 
 [dependencies.pyo3]
 version = "0.12.3"
+features = ["extension-module"]
