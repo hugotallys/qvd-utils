@@ -20,4 +20,3 @@ bitvec = "0.19.4"
 
 [dependencies.pyo3]
 version = "0.12.3"
-features = ["extension-module"]
